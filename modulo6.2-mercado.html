@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>InvestAI — Módulo 2 Ingesta de Datos</title>
+
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
+  <style>    /* ===== INVESTAI NAVBAR v2 ===== */
+    .investai-navbar { background-color: #112244 !important; color: white !important; display: flex !important; align-items: center !important; padding: 0 20px !important; height: 50px !important; box-shadow: 0 2px 16px rgba(0,0,0,.18) !important; position: sticky; top: 0; z-index: 9999; box-sizing: border-box; }
+    .investai-brand { display: flex !important; align-items: center !important; font-weight: bold !important; font-size: 16px !important; margin-right: 24px !important; color: white !important; text-decoration: none !important; flex-shrink: 0; }
+    .investai-brand-icon { color: #ffcc00 !important; margin-right: 8px !important; font-weight: 900 !important; }
+    .investai-nav-links { display: flex !important; gap: 6px !important; overflow-x: auto !important; white-space: nowrap !important; height: 100%; align-items: center !important; flex: 1; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .investai-nav-links::-webkit-scrollbar { display: none; }
+    .investai-nav-links a { color: rgba(255, 255, 255, 0.65) !important; text-decoration: none !important; padding: 6px 12px !important; border-radius: 6px !important; font-size: 13px !important; font-weight: 500 !important; transition: all 0.2s ease !important; flex-shrink: 0; cursor: pointer; }
+    .investai-nav-links a:hover { color: white !important; background-color: rgba(255, 255, 255, 0.10) !important; }
+    .investai-nav-links a.active-tab { background-color: #ffcc00 !important; color: #112244 !important; font-weight: 700 !important; }
+    /* ===== END INVESTAI NAVBAR ===== */
+
+    /* ============================================================
+       VARIABLES CSS — PALETA CORPORATIVA INVESTAI
+    ============================================================ */
+    :root {
+      --bg-main:       #F5F7FA; /* Fondo general gris claro */
+      --bg-card:       #FFFFFF; /* Superficie de tarjeta/contenedor */
+      --primary:       #1F3864; /* Azul oscuro corporativo */
+      --accent:        #C5961A; /* Dorado de acento */
+      --accent-light:  #F0D580; /* Dorado claro para hover */
+      --text-main:     #000000; /* Texto principal */
+      --text-muted:    #6B7280; /* Texto secundario */
+      --success:       #28A745; /* Verde positivo */
+      --danger:        #DC3545; /* Rojo negativo/error */
+      --warning:       #FFC107; /* Amarillo advertencia */
+      --border:        #E2E8F0; /* Borde sutil */
+      --nav-height:    56px;    /* Altura fija de la barra de navegación */
+      --radius:        8px;     /* Radio de borde estándar */
+      --shadow:        0 1px 4px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
+      --font-mono:     'Courier New', Courier, monospace; /* Fuente terminal */
+    }
+
+    /* ============================================================
+       RESET Y BASE GLOBAL
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-main);
+      color: var(--text-main);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ============================================================
+       BARRA DE NAVEGACIÓN SUPERIOR UNIFICADA (CORREGIDA)
+    ============================================================ */
+    
+
+    
+
+    
+
+    
+    
+
+    .nav-tab {
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      color: rgba(255,255,255,0.65);
+      font-size: 12px;
+      font-weight: 500;
+      text-decoration: none;
+      white-space: nowrap;
+      border-bottom: 3px solid transparent;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+      user-select: none;
+    }
+
+    .nav-tab:hover {
+      color: rgba(255,255,255,0.9);
+      background: rgba(255,255,255,0.07);
+    }
+
+    .nav-tab.active {
+      color: var(--accent-light);
+      border-bottom-color: var(--accent);
+      background: #11213D;
+      font-weight: 700;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-left: auto;
+      color: var(--success);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      flex-shrink: 0;
+      padding-left: 10px;
+    }
+
+    .live-dot {
+      width: 7px; height: 7px;
+      background: var(--success);
+      border-radius: 50%;
+      animation: blink 1.4s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.25; }
+    }
+
+    /* ============================================================
+       LAYOUT PRINCIPAL
+    ============================================================ */
+    .page-wrapper {
+      padding-top: calc(var(--nav-height) + 16px);
+      padding-bottom: 24px;
+      padding-left: 20px;
+      padding-right: 20px;
+      max-width: 1680px;
+      margin: 0 auto;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .page-header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1.2;
+    }
+
+    .page-header h1 span {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .clock {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .clock strong {
+      display: block;
+      font-size: 20px;
+      color: var(--primary);
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+
+    .row-top {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .row-chart { margin-bottom: 16px; }
+
+    /* ============================================================
+       COMPONENTE TARJETA
+    ============================================================ */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      padding: 20px 22px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 8px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .card-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px; height: 14px;
+      background: var(--accent);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    /* ============================================================
+       PANEL 1 — CONTROL DE INGESTA DE ACTIVOS
+    ============================================================ */
+    .ingest-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .field-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      margin-bottom: 6px;
+    }
+
+    .styled-select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text-main);
+      background: var(--bg-main);
+      appearance: none;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236B7280'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 32px;
+    }
+    .styled-select:focus { border-color: var(--primary); }
+
+    .ticker-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+      min-height: 28px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #EEF2FF;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 600;
+      border: 1.5px solid transparent;
+      transition: all 0.15s;
+      user-select: none;
+    }
+
+    .chip:hover { border-color: var(--primary); background: #E0E7FF; }
+    .chip.selected { background: var(--primary); color: #FFF; border-color: var(--primary); }
+    .chip-remove { font-size: 14px; line-height: 1; opacity: 0.7; cursor: pointer; }
+    .chip-remove:hover { opacity: 1; }
+
+    .btn-ingest {
+      width: 100%;
+      margin-top: 16px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      background: var(--primary);
+      color: #FFF;
+    }
+
+    .btn-ingest.ingesting {
+      background: var(--success);
+      animation: pulse-btn 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse-btn {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.4); }
+      50%       { box-shadow: 0 0 0 8px rgba(40, 167, 69, 0); }
+    }
+
+    .btn-ingest:hover:not(.ingesting) {
+      background: #16294F;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(31,56,100,0.3);
+    }
+
+    .ingest-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .stat-mini {
+      text-align: center;
+      padding: 10px 8px;
+      background: var(--bg-main);
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
+    .stat-mini-val { font-size: 18px; font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; }
+    .stat-mini-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* ============================================================
+       PANEL 2 — ESTADO DE CONEXIÓN DE CAPAS DE DATOS (APIs)
+    ============================================================ */
+    .api-list { display: flex; flex-direction: column; gap: 10px; }
+
+    .api-widget {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 7px;
+      border: 1.5px solid var(--border);
+      background: var(--bg-main);
+      transition: border-color 0.3s;
+    }
+
+    .api-widget.error { border-color: var(--danger); background: #FFF8F8; }
+    .api-name { font-size: 13px; font-weight: 700; color: var(--primary); }
+    .api-metrics { display: flex; gap: 16px; justify-self: end; }
+    .api-metric { text-align: right; }
+    .api-metric-val { font-size: 14px; font-weight: 700; color: var(--text-main); font-variant-numeric: tabular-nums; }
+    .api-metric-unit { font-size: 10px; color: var(--text-muted); }
+
+    .status-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .status-dot.connected { background: var(--success); box-shadow: 0 0 6px rgba(40,167,69,0.5); }
+    .status-dot.error     { background: var(--danger);  box-shadow: 0 0 6px rgba(220,53,69,0.5); }
+
+    .btn-sync {
+      padding: 8px 14px;
+      border: 1.5px solid var(--accent);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-sync:hover { background: var(--accent); color: #FFF; }
+
+    .latency-bar { height: 4px; border-radius: 2px; background: var(--border); margin-top: 4px; overflow: hidden; width: 120px; }
+    .latency-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease, background 0.5s ease; }
+
+    /* ============================================================
+       PANEL 3 — GRÁFICO BURSÁTIL
+    ============================================================ */
+    .chart-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+    .chart-asset-selector { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .asset-btn {
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: transparent;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .asset-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .asset-btn.active { background: var(--primary); border-color: var(--primary); color: #FFF; }
+
+    .price-display { margin-left: auto; text-align: right; }
+    .price-value { font-size: 22px; font-weight: 800; color: var(--primary); font-variant-numeric: tabular-nums; }
+    .price-change { font-size: 12px; font-weight: 600; }
+    .price-change.up   { color: var(--success); }
+    .price-change.down { color: var(--danger); }
+
+    #chart-candlestick { width: 100%; height: 420px; }
+
+    /* ============================================================
+       PANEL 4 — CONSOLA DE LOGS DEL SISTEMA
+    ============================================================ */
+    .console-wrapper { background: #0D1117; border-radius: var(--radius); border: 1px solid #30363D; box-shadow: var(--shadow); overflow: hidden; }
+    .console-titlebar { background: #161B22; padding: 10px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #30363D; }
+    .win-btn { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+    .win-btn.close  { background: #FF5F57; }
+    .win-btn.min    { background: #FEBC2E; }
+    .win-btn.max    { background: #28C840; }
+    .console-title-text { font-size: 12px; color: #8B949E; font-family: var(--font-mono); margin-left: 4px; }
+
+    .console-output { height: 220px; overflow-y: auto; padding: 14px 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.7; scroll-behavior: smooth; }
+    .console-output::-webkit-scrollbar       { width: 6px; }
+    .console-output::-webkit-scrollbar-track { background: #0D1117; }
+    .console-output::-webkit-scrollbar-thumb { background: #30363D; border-radius: 3px; }
+
+    .log-line { display: flex; gap: 10px; animation: log-appear 0.2s ease-out; }
+    @keyframes log-appear { from { opacity: 0; transform: translateX(-4px); } to   { opacity: 1; transform: translateX(0); } }
+    .log-ts { color: #3C4A5C; flex-shrink: 0; }
+    .log-level { font-weight: 700; flex-shrink: 0; }
+    .log-level.INFO    { color: #58A6FF; }
+    .log-level.SUCCESS { color: #3FB950; }
+    .log-level.WARN    { color: #D29922; }
+    .log-level.ERROR   { color: #F85149; }
+     
+    .log-msg { color: #C9D1D9; }
+
+    .console-statusbar { background: #161B22; border-top: 1px solid #30363D; padding: 6px 16px; display: flex; align-items: center; justify-content: space-between; font-family: var(--font-mono); font-size: 11px; }
+    .console-status-left  { color: #3FB950; }
+    .console-status-right { color: #8B949E; }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+    @media (max-width: 1024px) {
+      
+      .nav-tab { padding: 0 8px; font-size: 11px; }
+    }
+    @media (max-width: 768px) {
+      .page-wrapper { padding-left: 12px; padding-right: 12px; }
+      .row-top { grid-template-columns: 1fr; }
+      .ingest-controls { grid-template-columns: 1fr; }
+      .api-widget { grid-template-columns: auto 1fr; }
+      #chart-candlestick { height: 340px; }
+      .price-value { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="investai-navbar">
+    <a href="modulo6.6-core-predictivo-central.html" class="investai-brand">
+        <span class="investai-brand-icon">|||</span> InvestAI
+    </a>
+    <div class="investai-nav-links">
+        <a href="modulo6.1-autenticacion.html" id="nav-m1" data-mod="m1" onclick="navigateModule('m1', event)">Autenticación (M1)</a>
+        <a href="modulo6.2-mercado.html" id="nav-m2" data-mod="m2" onclick="navigateModule('m2', event)" class="active-tab">Ingesta de Datos (M2)</a>
+        <a href="#" id="nav-m3" data-mod="m3" onclick="navigateModule('m3', event)">Clasificación (M3)</a>
+        <a href="#" id="nav-m4" data-mod="m4" onclick="navigateModule('m4', event)">Regresión (M4)</a>
+        <a href="modulo6.5-nlp-operaciones.html" id="nav-m5" data-mod="m5" onclick="navigateModule('m5', event)">Análisis NLP (M5)</a>
+        <a href="modulo6.6-core-predictivo-central.html" id="nav-m6" data-mod="m6" onclick="navigateModule('m6', event)">Core Predictivo (M6)</a>
+        <a href="modulo6.7-estrategias.html" id="nav-m7" data-mod="m7" onclick="navigateModule('m7', event)">Estrategias (M7)</a>
+        <a href="modulo6.8-ordenes.html" id="nav-m8" data-mod="m8" onclick="navigateModule('m8', event)">Órdenes (M8)</a>
+        <a href="modulo6.9-portafolio.html" id="nav-m9" data-mod="m9" onclick="navigateModule('m9', event)">Portafolios (M9)</a>
+        <a href="modulo6.10-consola.html" id="nav-m10" data-mod="m10" onclick="navigateModule('m10', event)">Consola (M10)</a>
+        <a href="modulo6.11-backtesting.html" id="nav-m11" data-mod="m11" onclick="navigateModule('m11', event)">Backtesting (M11)</a>
+    </div>
+</nav>
+
+  <main class="page-wrapper" role="main">
+    <header class="page-header">
+      <h1><span>Módulo M2</span>Ingesta de Datos &amp; Monitoreo de Mercado</h1>
+      <div class="clock" aria-live="polite" aria-label="Hora actual">
+        <div id="clock-date">Cargando...</div>
+        <strong id="clock-time">--:--:--</strong>
+      </div>
+    </header>
+
+    <section class="row-top" aria-label="Controles y estado de conexión">
+      <div class="card" id="panel-ingest" aria-labelledby="ingest-title">
+        <div class="card-header">
+          <div class="card-title" id="ingest-title">Control de Ingesta de Activos</div>
+        </div>
+        <div class="ingest-controls">
+          <div>
+            <div class="field-label">Añadir Ticker</div>
+            <select class="styled-select" id="ticker-select" aria-label="Seleccionar ticker">
+              <option value="">— Seleccionar —</option>
+              <optgroup label="Renta Variable">
+                <option value="AAPL">AAPL — Apple Inc.</option>
+                <option value="MSFT">MSFT — Microsoft Corp.</option>
+                <option value="GOOGL">GOOGL — Alphabet Inc.</option>
+                <option value="AMZN">AMZN — Amazon.com</option>
+                <option value="NVDA">NVDA — NVIDIA Corp.</option>
+                <option value="TSLA">TSLA — Tesla Inc.</option>
+              </optgroup>
+              <optgroup label="Criptomonedas">
+                <option value="BTC">BTC — Bitcoin</option>
+                <option value="ETH">ETH — Ethereum</option>
+                <option value="SOL">SOL — Solana</option>
+              </optgroup>
+            </select>
+            <div class="ticker-chips" id="ticker-chips" role="list" aria-label="Tickers seleccionados"></div>
+          </div>
+          <div>
+            <div class="field-label">Intervalo de Muestreo</div>
+            <select class="styled-select" id="interval-select">
+              <option value="1m">1 minuto</option>
+              <option value="5m" selected>5 minutos</option>
+              <option value="1h">1 hora</option>
+              <option value="1d">1 día</option>
+            </select>
+            <div class="field-label" style="margin-top:12px;">Fuente de Datos</div>
+            <select class="styled-select" id="source-select">
+              <option value="yahoo">Yahoo Finance</option>
+              <option value="cmc">CoinMarketCap</option>
+              <option value="ib">Interactive Brokers</option>
+            </select>
+          </div>
+        </div>
+
+        <button class="btn-ingest" id="btn-ingest" onclick="toggleIngesta()">
+          <span id="btn-ingest-text">Iniciar Ingesta en Tiempo Real</span>
+        </button>
+
+        <div class="ingest-stats">
+          <div class="stat-mini"><div class="stat-mini-val" id="stat-rows">0</div><div class="stat-mini-label">Filas</div></div>
+          <div class="stat-mini"><div class="stat-mini-val" id="stat-tickers">0</div><div class="stat-mini-label">Activos</div></div>
+          <div class="stat-mini"><div class="stat-mini-val" id="stat-errors">0</div><div class="stat-mini-label">Errores</div></div>
+        </div>
+      </div>
+
+      <div class="card" id="panel-apis" aria-labelledby="apis-title">
+        <div class="card-header">
+          <div class="card-title" id="apis-title">Estado de Conexión — APIs</div>
+          <button class="btn-sync" onclick="forceSyncAll()">↺ Sincronizar</button>
+        </div>
+        <div class="api-list" id="api-list">
+          <div class="api-widget" id="api-yahoo">
+            <div class="status-dot connected" id="dot-yahoo"></div>
+            <div>
+              <div class="api-name">Yahoo Finance</div>
+              <div class="latency-bar"><div class="latency-fill" id="lat-bar-yahoo" style="width:30%; background:var(--success);"></div></div>
+            </div>
+            <div class="api-metrics">
+              <div class="api-metric"><div class="api-metric-val" id="lat-yahoo">42</div><div class="api-metric-unit">ms</div></div>
+            </div>
+          </div>
+          <div class="api-widget" id="api-cmc">
+            <div class="status-dot connected" id="dot-cmc"></div>
+            <div>
+              <div class="api-name">CoinMarketCap</div>
+              <div class="latency-bar"><div class="latency-fill" id="lat-bar-cmc" style="width:45%; background:var(--success);"></div></div>
+            </div>
+            <div class="api-metrics">
+              <div class="api-metric"><div class="api-metric-val" id="lat-cmc">89</div><div class="api-metric-unit">ms</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="row-chart" aria-labelledby="chart-title">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title" id="chart-title">Visualización de Mercado Pro</div>
+          <div class="chart-controls">
+            <div class="chart-asset-selector" id="chart-asset-selector"></div>
+            <div class="price-display">
+              <div class="price-value" id="live-price">$0.00</div>
+              <div class="price-change up" id="live-change">+0.00%</div>
+            </div>
+          </div>
+        </div>
+        <div id="chart-candlestick"></div>
+      </div>
+    </section>
+
+    <section class="row-console">
+      <div class="console-wrapper">
+        <div class="console-titlebar">
+          <div class="win-btn close"></div><div class="win-btn min"></div><div class="win-btn max"></div>
+          <div class="console-title-text">investai_kernel_stream.log</div>
+        </div>
+        <div class="console-output" id="console-output">
+          <div class="log-line"><span class="log-ts">[00:00:00]</span><span class="log-level INFO">INFO</span><span class="log-msg">Sistema de Ingesta inicializado listo.</span></div>
+        </div>
+        <div class="console-statusbar">
+          <div class="console-status-left">● STREAMING_IDLE</div>
+          <div class="console-status-right">UTF-8</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // --- ESTADO GLOBAL ---
+    let tickersSeleccionados = new Set(['AAPL', 'BTC']);
+    let isIngesting = false;
+    let ingestInterval = null;
+    let selectedChartAsset = 'AAPL';
+    let totalRows = 0;
+    let totalErrors = 0;
+
+    // Precios y simulación base
+    const basePrices = { AAPL: 175.50, MSFT: 420.20, GOOGL: 150.10, AMZN: 178.00, NVDA: 875.00, TSLA: 170.30, BTC: 65000, ETH: 3500, SOL: 140 };
+    let chartDataStore = {};
+
+    // --- RELOJ ---
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock-date').textContent = now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('clock-time').textContent = now.toLocaleTimeString('es-ES');
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // --- CONSOLA DE LOGS ---
+    function logToConsole(level, msg) {
+      const output = document.getElementById('console-output');
+      const now = new Date().toLocaleTimeString('es-ES');
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      line.innerHTML = `<span class="log-ts">[${now}]</span><span class="log-level ${level}">${level}</span><span class="log-msg">${msg}</span>`;
+      output.appendChild(line);
+      output.scrollTop = output.scrollHeight;
+    }
+
+    // --- TICKERS / CHIPS ---
+    const select = document.getElementById('ticker-select');
+    select.addEventListener('change', (e) => {
+      const val = e.target.value;
+      if (val && !tickersSeleccionados.has(val)) {
+        tickersSeleccionados.add(val);
+        renderChips();
+        logToConsole('INFO', `Activo añadido a la cola de monitoreo: ${val}`);
+      }
+      e.target.value = '';
+    });
+
+    function renderChips() {
+      const container = document.getElementById('ticker-chips');
+      const selector = document.getElementById('chart-asset-selector');
+      container.innerHTML = '';
+      selector.innerHTML = '';
+
+      tickersSeleccionados.forEach(ticker => {
+        const chip = document.createElement('div');
+        chip.className = 'chip';
+        chip.innerHTML = `${ticker} <span class="chip-remove">&times;</span>`;
+        chip.querySelector('.chip-remove').onclick = () => {
+          tickersSeleccionados.delete(ticker);
+          if(selectedChartAsset === ticker) {
+            selectedChartAsset = tickersSeleccionados.values().next().value || '';
+          }
+          renderChips();
+          logToConsole('WARN', `Activo removido: ${ticker}`);
+        };
+        container.appendChild(chip);
+
+        const btn = document.createElement('button');
+        btn.className = `asset-btn ${selectedChartAsset === ticker ? 'active' : ''}`;
+        btn.textContent = ticker;
+        btn.onclick = () => {
+          selectedChartAsset = ticker;
+          renderChips();
+          updateLivePriceDisplay();
+          renderChart();
+        };
+        selector.appendChild(btn);
+      });
+
+      document.getElementById('stat-tickers').textContent = tickersSeleccionados.size;
+    }
+
+    // --- SIMULACIÓN Y GRÁFICO PLOTLY ---
+    function initDataStore(ticker) {
+      if (!chartDataStore[ticker]) {
+        let open = basePrices[ticker] || 100;
+        let times = [], opens = [], highs = [], lows = [], closes = [], volumes = [];
+        let now = Date.now();
+        for(let i = 20; i >= 0; i--) {
+          times.push(new Date(now - i * 60000 * 5));
+          let change = open * 0.01 * (Math.random() - 0.5);
+          let close = open + change;
+          opens.push(open);
+          closes.push(close);
+          highs.push(Math.max(open, close) + Math.random()*2);
+          lows.push(Math.min(open, close) - Math.random()*2);
+          volumes.push(Math.floor(Math.random() * 5000 + 1000));
+          open = close;
+        }
+        chartDataStore[ticker] = { times, opens, highs, lows, closes, volumes };
+      }
+    }
+
+    function generateNewCandle(ticker) {
+      initDataStore(ticker);
+      let assetData = chartDataStore[ticker];
+      let lastClose = assetData.closes[assetData.closes.length - 1];
+      let change = lastClose * 0.005 * (Math.random() - 0.48);
+      let newClose = lastClose + change;
+      
+      assetData.times.push(new Date());
+      assetData.opens.push(lastClose);
+      assetData.closes.push(newClose);
+      assetData.highs.push(Math.max(lastClose, newClose) + Math.random());
+      assetData.lows.push(Math.min(lastClose, newClose) - Math.random());
+      assetData.volumes.push(Math.floor(Math.random() * 6000 + 500));
+
+      if(assetData.times.length > 30) {
+        assetData.times.shift(); assetData.opens.shift(); assetData.closes.shift();
+        assetData.highs.shift(); assetData.lows.shift(); assetData.volumes.shift();
+      }
+    }
+
+    function renderChart() {
+      if (!selectedChartAsset) {
+        document.getElementById('chart-candlestick').innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">Ningún activo seleccionado</div>';
+        return;
+      }
+      initDataStore(selectedChartAsset);
+      const data = chartDataStore[selectedChartAsset];
+
+      const trace = {
+        x: data.times, open: data.opens, high: data.highs, low: data.lows, close: data.closes,
+        type: 'candlestick',
+        increasing: { line: { color: '#28A745' } },
+        decreasing: { line: { color: '#DC3545' } },
+        name: selectedChartAsset
+      };
+
+      const layout = {
+        margin: { t: 10, b: 40, l: 40, r: 10 },
+        xaxis: { rangeslider: { visible: false }, gridcolor: '#E2E8F0', type: 'date' },
+        yaxis: { gridcolor: '#E2E8F0', side: 'right' },
+        template: 'plotly_white',
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)'
+      };
+
+      Plotly.newPlot('chart-candlestick', [trace], layout, { responsive: true, displayModeBar: false });
+    }
+
+    function updateLivePriceDisplay() {
+      if(!selectedChartAsset) return;
+      initDataStore(selectedChartAsset);
+      const data = chartDataStore[selectedChartAsset];
+      const currentPrice = data.closes[data.closes.length - 1];
+      const firstPrice = data.opens[0];
+      const changePct = ((currentPrice - firstPrice) / firstPrice) * 100;
+
+      const priceEl = document.getElementById('live-price');
+      const changeEl = document.getElementById('live-change');
+
+      priceEl.textContent = `$${currentPrice.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      changeEl.className = `price-change ${changePct >= 0 ? 'up' : 'down'}`;
+      changeEl.textContent = `${changePct >= 0 ? '▲' : '▼'} ${changePct.toFixed(2)}%`;
+    }
+
+    // --- ACCIONES PRINCIPALES ---
+    function toggleIngesta() {
+      const btn = document.getElementById('btn-ingest');
+      const txt = document.getElementById('btn-ingest-text');
+      const statusIndicator = document.querySelector('.console-statusbar .console-status-left');
+
+      if (!isIngesting) {
+        if(tickersSeleccionados.size === 0) {
+          logToConsole('ERROR', 'No se puede iniciar la ingesta sin activos en la lista.');
+          alert('Por favor selecciona al menos un activo.');
+          return;
+        }
+        isIngesting = true;
+        btn.classList.add('ingesting');
+        txt.textContent = "Detener Ingesta en Vivo";
+        statusIndicator.innerHTML = "● STREAMING_ACTIVE";
+        statusIndicator.style.color = "var(--success)";
+        logToConsole('SUCCESS', 'Ingesta en tiempo real iniciada con éxito mediante WebSockets.');
+
+        ingestInterval = setInterval(() => {
+          tickersSeleccionados.forEach(ticker => {
+            generateNewCandle(ticker);
+            totalRows += 1;
+            
+            if (Math.random() < 0.03) {
+              totalErrors++;
+              logToConsole('ERROR', `Fallo de red transitorio en respuesta de buffer para: ${ticker}`);
+            } else {
+              logToConsole('INFO', `Paquete de datos recibido con éxito: ${ticker} — Vela sincronizada.`);
+            }
+          });
+          document.getElementById('stat-rows').textContent = totalRows;
+          document.getElementById('stat-errors').textContent = totalErrors;
+          updateLivePriceDisplay();
+          renderChart();
+        }, 3000);
+
+      } else {
+        isIngesting = false;
+        btn.classList.remove('ingesting');
+        txt.textContent = "Iniciar Ingesta en Tiempo Real";
+        statusIndicator.innerHTML = "● STREAMING_IDLE";
+        statusIndicator.style.color = "var(--text-muted)";
+        logToConsole('WARN', 'Ingesta de datos pausada por el usuario.');
+        clearInterval(ingestInterval);
+      }
+    }
+
+    function forceSyncAll() {
+      logToConsole('INFO', 'Forzando sincronización completa con los servidores de API...');
+      setTimeout(() => {
+        logToConsole('SUCCESS', 'Sincronización manual completada. Buffers limpios.');
+      }, 800);
+    }
+
+    // Inicialización por defecto
+    renderChips();
+    updateLivePriceDisplay();
+    renderChart();
+      /* ===== INVESTAI NAVBAR DRAG SCROLL ===== */
+    (function(){
+      const slider = document.querySelector('.investai-nav-links');
+      if(!slider) return;
+      let isDown=false, startX, scrollLeft;
+      slider.addEventListener('mousedown', e=>{ isDown=true; startX=e.pageX-slider.offsetLeft; scrollLeft=slider.scrollLeft; slider.style.cursor='grabbing'; });
+      slider.addEventListener('mouseleave', ()=>{ isDown=false; slider.style.cursor=''; });
+      slider.addEventListener('mouseup', ()=>{ isDown=false; slider.style.cursor=''; });
+      slider.addEventListener('mousemove', e=>{ if(!isDown) return; e.preventDefault(); const x=e.pageX-slider.offsetLeft; const walk=(x-startX)*2; slider.scrollLeft=scrollLeft-walk; });
+    })();
+    /* ===== END DRAG SCROLL ===== */
+    /* ===== INVESTAI NAVIGATION LOGIC ===== */
+    if(typeof navigateModule === 'undefined'){
+      const modulosConfig = {
+        m1:{ title:"Autenticación (M1)", desc:"Gestión de seguridad, tokens JWT y control de acceso MFA.", icon:"🔐" },
+        m2:{ title:"Ingesta de Datos (M2)", desc:"Pipelines automatizados de captura y streaming en tiempo real desde APIs financieras.", icon:"📥" },
+        m3:{ title:"Clasificación (M3)", desc:"Mapeo de activos y etiquetado de patrones de mercado mediante algoritmos supervisados.", icon:"🏷️" },
+        m4:{ title:"Regresión (M4)", desc:"Modelos cuantitativos para estimación de precios objetivos y targets numéricos.", icon:"📊" },
+        m5:{ title:"Análisis NLP (M5)", desc:"Procesamiento de Lenguaje Natural sobre noticias financieras y reportes macroeconómicos.", icon:"💬" },
+        m6:{ title:"Core Predictivo (M6)", desc:"Núcleo central de IA que coordina todos los módulos de predicción.", icon:"🧠" },
+        m7:{ title:"Estrategias (M7)", desc:"Generación algorítmica de reglas operativas basadas en señales del predictivo.", icon:"💡" },
+        m8:{ title:"Órdenes (M8)", desc:"Enrutador inteligente hacia brókers con control estricto de Slippage.", icon:"⚡" },
+        m9:{ title:"Portafolios (M9)", desc:"Rebalanceo automático mediante optimización de varianza media y riesgo controlado.", icon:"💼" },
+        m10:{ title:"Consola (M10)", desc:"Panel de administración para control manual de umbrales operativos.", icon:"🖥️" },
+        m11:{ title:"Backtesting (M11)", desc:"Simulador sobre series históricas con métricas de Sharpe y Sortino.", icon:"⏳" }
+      };
+      window.navigateModule = function(moduloId, event) {
+        const targetLink = document.getElementById('nav-'+moduloId);
+        if(!targetLink) return;
+        const urlDestino = targetLink.getAttribute('href');
+        if(!urlDestino || urlDestino==='#'){ event.preventDefault(); showPlaceholderView(moduloId); return; }
+        event.preventDefault();
+        fetch(urlDestino,{method:'HEAD'})
+          .then(r=>{ if(r.ok){ window.location.href=urlDestino; } else { showPlaceholderView(moduloId); } })
+          .catch(()=>{ window.location.href=urlDestino; });
+      };
+      window.showPlaceholderView = function(moduloId) {
+        const config = modulosConfig[moduloId];
+        if(!config) return;
+        document.querySelectorAll('.view-section').forEach(s=>s.classList.remove('active-view'));
+        const ph=document.getElementById('view-placeholder');
+        if(ph){
+          const ti=document.getElementById('placeholder-title');
+          const pt=document.getElementById('placeholder-panel-title');
+          const de=document.getElementById('placeholder-desc');
+          const ic=document.getElementById('placeholder-icon');
+          if(ti) ti.innerText=config.title;
+          if(pt) pt.innerText=config.title+' en Desarrollo';
+          if(de) de.innerText=config.desc;
+          if(ic) ic.innerText=config.icon;
+          ph.classList.add('active-view');
+        }
+        document.querySelectorAll('.investai-nav-links a').forEach(a=>a.classList.remove('active-tab'));
+        const al=document.getElementById('nav-'+moduloId);
+        if(al) al.classList.add('active-tab');
+      };
+      window.resetToCore = function(){ window.location.href='modulo6.6-core-predictivo-central.html'; };
+    }
+    /* ===== END NAVIGATION LOGIC ===== */
+  </script>
+</body>
+</html>
